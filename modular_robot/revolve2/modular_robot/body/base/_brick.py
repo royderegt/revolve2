@@ -24,7 +24,8 @@ class Brick(Module):
         rotation: float | RightAngles,
         mass: float,
         bounding_box: Vector3,
-        child_offset: float,
+        front_offset: float,
+        side_offset: float,
         sensors: list[Sensor],
     ):
         """
@@ -38,15 +39,15 @@ class Brick(Module):
         """
         attachment_points = {
             self.FRONT: AttachmentPoint(
-                offset=Vector3([child_offset, 0.0, 0.0]),
+                offset=Vector3([front_offset, 0.0, 0.0]),
                 orientation=Quaternion.from_eulers([0.0, 0.0, 0.0]),
             ),
             self.LEFT: AttachmentPoint(
-                offset=Vector3([child_offset, 0.0, 0.0]),
+                offset=Vector3([side_offset, 0.0, 0.0]),
                 orientation=Quaternion.from_eulers([0.0, 0.0, math.pi / 2.0]),
             ),
             self.RIGHT: AttachmentPoint(
-                offset=Vector3([child_offset, 0.0, 0.0]),
+                offset=Vector3([side_offset, 0.0, 0.0]),
                 orientation=Quaternion.from_eulers([0.0, 0.0, math.pi / 2.0 * 3]),
             ),
         }
