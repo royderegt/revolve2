@@ -78,7 +78,7 @@ def __evaluate_cppn(
     body_net: multineat.NeuralNetwork,
     position: Vector3[np.int_],
     chain_length: int,
-) -> tuple[Any, float]:
+) -> tuple[Any, float, float]:
     """
     Get module type and orientation from a multineat CPPN network.
 
@@ -105,9 +105,11 @@ def __evaluate_cppn(
     
     The output ranges between [0,1] and we have 4 rotations available (0, 90, 180, 270).
     """
-    angle = max(0, int(outputs[0] * 4 - 1e-6)) * (np.pi / 2.0)
+    angle = max(0, int(outputs[1] * 4 - 1e-6)) * (np.pi / 2.0)
 
-    return module_type, angle
+    bone_length = max(0, 75 + int(outputs[2] * 150 - 1e-6))
+
+    return module_type, angle, bone_length
 
 
 def __add_child(
@@ -129,7 +131,7 @@ def __add_child(
 
     """Now we anjust the position for the potential new module to fit the attachment point of the parent, additionally we query the CPPN for child type and angle of the child."""
     new_pos = np.array(np.round(position + attachment_point.offset), dtype=np.int64)
-    child_type, angle = __evaluate_cppn(body_net, new_pos, chain_length)
+    child_type, angle, bone_length = __evaluate_cppn(body_net, new_pos, chain_length)
 
     """Here we check whether the CPPN evaluated to place a module and if the module can be set on the parent."""
     can_set = module.module_reference.can_set_child(attachment_index)
@@ -137,7 +139,11 @@ def __add_child(
         return None  # No module will be placed.
 
     """Now we know we want a child on the parent and we instantiate it, add the position to the grid and adjust the up direction for the new module."""
-    child = child_type(angle)
+    if child_type is BrickV2Large:
+        bone_length = bone_length / 1000
+        child = BrickV2Large(angle, bone_length)
+    else:
+        child = child_type(angle)
     grid[tuple(position)] += 1
     up = __rotate(module.up, forward, Quaternion.from_eulers([angle, 0, 0]))
     module.module_reference.set_child(child, attachment_index)

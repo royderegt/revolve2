@@ -48,7 +48,7 @@ class BodyGenotypeOrmV2(orm.MappedAsDataclass, kw_only=True):
             multineat_params=cls._MULTINEAT_PARAMS,
             output_activation_func=multineat.ActivationFunction.UNSIGNED_SINE,
             num_inputs=5,  # bias(always 1), pos_x, pos_y, pos_z, chain_length
-            num_outputs=2,  # block_type, rotation_type
+            num_outputs=3,  # block_type, rotation_type, bone_length
             num_initial_mutations=cls._NUM_INITIAL_MUTATIONS,
         )
 

@@ -7,13 +7,12 @@ from ..base import Brick
 class BrickV2Large(Brick):
     """A brick module for a modular robot."""
 
-    def __init__(self, rotation: float | RightAngles, offset=None):
+    def __init__(self, rotation: float | RightAngles, bone_length: float):
         """
         Initialize this object.
 
         :param rotation: The modules' rotation.
         """
-        bone_length = 0.2
         super().__init__(
             rotation=rotation,
             bounding_box=Vector3([bone_length, 0.075, 0.075]),
