@@ -4,7 +4,7 @@ import logging
 
 from pyrr import Vector3
 
-from revolve2.experimentation.logging import setup_logging
+from revolve2.experimentation.experiment_logging import setup_logging
 from revolve2.modular_robot import ModularRobot, ModularRobotControlInterface
 from revolve2.modular_robot.body.base import ActiveHinge
 from revolve2.modular_robot.body.sensors import IMUSensor

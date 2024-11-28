@@ -1,22 +1,32 @@
 """Main script for the example."""
+import os
 
 import logging
-import pickle
 from typing import Any
 
 import config
 import multineat
 import numpy as np
 import numpy.typing as npt
+from database_components import (
+    Base,
+    Experiment,
+    Generation,
+    Genotype,
+    Individual,
+    Population,
+)
 from evaluator import Evaluator
-from genotype import Genotype
-from individual import Individual
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
+from revolve2.standards.planar_robot_representation import draw_robots
+from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.evolution import ModularRobotEvolution
 from revolve2.experimentation.evolution.abstract_elements import Reproducer, Selector
 from revolve2.experimentation.experiment_logging import setup_logging
 from revolve2.experimentation.optimization.ea import population_management, selection
-from revolve2.experimentation.rng import make_rng_time_seed
+from revolve2.experimentation.rng import make_rng, seed_from_time
 
 
 class ParentSelector(Selector):
@@ -36,8 +46,8 @@ class ParentSelector(Selector):
         self.rng = rng
 
     def select(
-        self, population: list[Individual], **kwargs: Any
-    ) -> tuple[npt.NDArray[np.int_], dict[str, list[Individual]]]:
+        self, population: Population, **kwargs: Any
+    ) -> tuple[npt.NDArray[np.int_], dict[str, Population]]:
         """
         Select the parents.
 
@@ -49,10 +59,14 @@ class ParentSelector(Selector):
             [
                 selection.multiple_unique(
                     selection_size=2,
-                    population=[individual.genotype for individual in population],
-                    fitnesses=[individual.fitness for individual in population],
+                    population=[
+                        individual.genotype for individual in population.individuals
+                    ],
+                    fitnesses=[
+                        individual.fitness for individual in population.individuals
+                    ],
                     selection_function=lambda _, fitnesses: selection.tournament(
-                        rng=self.rng, fitnesses=fitnesses, k=1
+                        rng=self.rng, fitnesses=fitnesses, k=2
                     ),
                 )
                 for _ in range(self.offspring_size)
@@ -74,8 +88,8 @@ class SurvivorSelector(Selector):
         self.rng = rng
 
     def select(
-        self, population: list[Individual], **kwargs: Any
-    ) -> tuple[list[Individual], dict[str, Any]]:
+        self, population: Population, **kwargs: Any
+    ) -> tuple[Population, dict[str, Any]]:
         """
         Select survivors using a tournament.
 
@@ -92,8 +106,8 @@ class SurvivorSelector(Selector):
             )
 
         original_survivors, offspring_survivors = population_management.steady_state(
-            old_genotypes=[i.genotype for i in population],
-            old_fitnesses=[i.fitness for i in population],
+            old_genotypes=[i.genotype for i in population.individuals],
+            old_fitnesses=[i.fitness for i in population.individuals],
             new_genotypes=offspring,
             new_fitnesses=offspring_fitness,
             selection_function=lambda n, genotypes, fitnesses: selection.multiple_unique(
@@ -106,19 +120,25 @@ class SurvivorSelector(Selector):
             ),
         )
 
-        return [
-            Individual(
-                population[i].genotype,
-                population[i].fitness,
-            )
-            for i in original_survivors
-        ] + [
-            Individual(
-                offspring[i],
-                offspring_fitness[i],
-            )
-            for i in offspring_survivors
-        ], {}
+        return (
+            Population(
+                individuals=[
+                    Individual(
+                        genotype=population.individuals[i].genotype,
+                        fitness=population.individuals[i].fitness,
+                    )
+                    for i in original_survivors
+                ]
+                + [
+                    Individual(
+                        genotype=offspring[i],
+                        fitness=offspring_fitness[i],
+                    )
+                    for i in offspring_survivors
+                ]
+            ),
+            {},
+        )
 
 
 class CrossoverReproducer(Reproducer):
@@ -156,14 +176,14 @@ class CrossoverReproducer(Reproducer):
         :return: The genotypes of the children.
         :raises ValueError: If the parent population is not passed as a kwarg `parent_population`.
         """
-        parent_population: list[Individual] | None = kwargs.get("parent_population")
+        parent_population: Population | None = kwargs.get("parent_population")
         if parent_population is None:
             raise ValueError("No parent population given.")
 
         offspring_genotypes = [
             Genotype.crossover(
-                parent_population[parent1_i].genotype,
-                parent_population[parent2_i].genotype,
+                parent_population.individuals[parent1_i].genotype,
+                parent_population.individuals[parent2_i].genotype,
                 self.rng,
             ).mutate(self.innov_db_body, self.innov_db_brain, self.rng)
             for parent1_i, parent2_i in population
@@ -171,39 +191,33 @@ class CrossoverReproducer(Reproducer):
         return offspring_genotypes
 
 
-def find_best_robot(
-    current_best: Individual | None, population: list[Individual]
-) -> Individual:
+def run_experiment(dbengine: Engine) -> None:
     """
-    Return the best robot between the population and the current best individual.
+    Run an experiment.
 
-    :param current_best: The current best individual.
-    :param population: The population.
-    :returns: The best individual.
+    :param dbengine: An openened database with matching initialize database structure.
     """
-    return max(
-        population if current_best is None else [current_best] + population,
-        key=lambda x: x.fitness,
-    )
-
-
-def main() -> None:
-    """Run the program."""
-    # Set up logging.
-    setup_logging(file_name="log.txt")
+    logging.info("----------------")
+    logging.info("Start experiment")
 
     # Set up the random number generator.
-    rng = make_rng_time_seed()
+    rng_seed = seed_from_time()
+    rng = make_rng(rng_seed)
+
+    # Create and save the experiment instance.
+    experiment = Experiment(rng_seed=rng_seed)
+    logging.info("Saving experiment configuration.")
+    with Session(dbengine) as session:
+        session.add(experiment)
+        session.commit()
 
     # CPPN innovation databases.
-    # If you don't understand CPPN, just know that a single database is shared in the whole evolutionary process.
-    # One for body, and one for brain.
     innov_db_body = multineat.InnovationDatabase()
     innov_db_brain = multineat.InnovationDatabase()
 
     """
     Here we initialize the components used for the evolutionary process.
-
+    
     - evaluator: Allows us to evaluate a population of modular robots.
     - parent_selector: Allows us to select parents from a population of modular robots.
     - survivor_selector: Allows us to select survivors from a population.
@@ -224,7 +238,7 @@ def main() -> None:
         reproducer=crossover_reproducer,
     )
 
-    # Create an initial population as we cant start from nothing.
+    # Create an initial population, as we cant start from nothing.
     logging.info("Generating initial population.")
     initial_genotypes = [
         Genotype.random(
@@ -240,40 +254,52 @@ def main() -> None:
     initial_fitnesses = evaluator.evaluate(initial_genotypes)
 
     # Create a population of individuals, combining genotype with fitness.
-    population = [
-        Individual(genotype, fitness)
-        for genotype, fitness in zip(initial_genotypes, initial_fitnesses, strict=True)
-    ]
-
-    # Save the best robot
-    best_robot = find_best_robot(None, population)
-
-    # Set the current generation to 0.
-    generation_index = 0
+    population = Population(
+        individuals=[
+            Individual(genotype=genotype, fitness=fitness)
+            for genotype, fitness in zip(
+                initial_genotypes, initial_fitnesses, strict=True
+            )
+        ]
+    )
 
     # Start the actual optimization process.
     logging.info("Start optimization process.")
-    while generation_index < config.NUM_GENERATIONS:
-        logging.info(f"Generation {generation_index + 1} / {config.NUM_GENERATIONS}.")
+    # Create the evaluator.
+    evaluator = Evaluator(headless=False, num_simulators=1)
 
-        """
-        In contrast to the previous example we do not explicitly stat the order of operations here, but let the ModularRobotEvolution object do the scheduling.
-        This does not give a performance boost, but is more readable and less prone to errors due to mixing up the order.
-        
-        Not that you are not restricted to the classical ModularRobotEvolution object, since you can adjust the step function as you want.
-        """
-        population = modular_robot_evolution.step(
-            population
-        )  # Step the evolution forward.
+    # Show the robot.
+    evaluator.evaluate(initial_genotypes)
 
-        # Find the new best robot
-        best_robot = find_best_robot(best_robot, population)
 
-        logging.info(f"Best robot until now: {best_robot.fitness}")
-        logging.info(f"Genotype pickle: {pickle.dumps(best_robot)!r}")
+def main() -> None:
+    """Run the program."""
+    # Set up logging.
+    setup_logging(file_name="old_runs/log.txt")
 
-        # Increase the generation index counter.
-        generation_index += 1
+    # Open the database, only if it does not already exists.
+    dbengine = open_database_sqlite(
+        config.DATABASE_FILE, open_method=OpenMethod.NOT_EXISTS_AND_CREATE
+    )
+    # Create the structure of the database.
+    Base.metadata.create_all(dbengine)
+
+    run_experiment(dbengine)
+    # for _ in range(config.NUM_REPETITIONS):
+    #     run_experiment(dbengine)
+
+
+def save_to_db(dbengine: Engine, generation: Generation) -> None:
+    """
+    Save the current generation to the database.
+
+    :param dbengine: The database engine.
+    :param generation: The current generation.
+    """
+    logging.info("Saving generation.")
+    with Session(dbengine, expire_on_commit=False) as session:
+        session.add(generation)
+        session.commit()
 
 
 if __name__ == "__main__":

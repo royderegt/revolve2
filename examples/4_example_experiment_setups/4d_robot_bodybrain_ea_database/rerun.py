@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from revolve2.experimentation.database import OpenMethod, open_database_sqlite
-from revolve2.experimentation.logging import setup_logging
+from revolve2.experimentation.experiment_logging import setup_logging
 
 
 def main() -> None:

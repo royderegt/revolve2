@@ -1,6 +1,6 @@
 """Main script for the example."""
 
-from revolve2.experimentation.logging import setup_logging
+from revolve2.experimentation.experiment_logging import setup_logging
 from revolve2.modular_robot import ModularRobot, ModularRobotControlInterface
 from revolve2.modular_robot.body import RightAngles
 from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2

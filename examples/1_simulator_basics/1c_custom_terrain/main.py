@@ -4,6 +4,7 @@ import math
 
 from pyrr import Quaternion, Vector3
 
+from revolve2.standards.interactive_objects import Ball
 from revolve2.experimentation.experiment_logging import setup_logging
 from revolve2.experimentation.rng import make_rng_time_seed
 from revolve2.modular_robot import ModularRobot
@@ -48,35 +49,6 @@ def make_custom_terrain() -> Terrain:
                 texture=Flat(primary_color=Color(0, 255, 0, 255)),
                 aabb=AABB(size=Vector3([0.5, 0.5, 0.2])),
             ),
-            GeometryBox(
-                pose=Pose(
-                    position=Vector3([-0.8, 0.4, 0.125]), orientation=Quaternion()
-                ),
-                mass=0.0,
-                texture=Gradient(
-                    primary_color=Color(0, 200, 100, 255),
-                    secondary_color=Color(0, 100, 200, 255),
-                ),
-                aabb=AABB(size=Vector3([0.5, 0.5, 0.25])),
-            ),
-            GeometryBox(
-                pose=Pose(
-                    position=Vector3([-0.8 + 0.38, 0.3, 0.125]),
-                    orientation=Quaternion.from_eulers([0.0, math.pi / 4.0, 0.0]),
-                ),
-                mass=0.0,
-                texture=Flat(primary_color=Color(50, 80, 180, 255)),
-                aabb=AABB(size=Vector3([0.5, 0.4, 0.02])),
-            ),
-            GeometryBox(
-                pose=Pose(position=Vector3([-0.1, 0.9, 0.5]), orientation=Quaternion()),
-                mass=0.0,
-                texture=Flat(
-                    primary_color=Color(100, 0, 100, 255),
-                    base_color=Color(255, 255, 255, 100),
-                ),
-                aabb=AABB(size=Vector3([0.2, 0.2, 1.0])),
-            ),
         ]
     )
 
@@ -97,6 +69,14 @@ def main() -> None:
     # Create the scene.
     scene = ModularRobotScene(terrain=make_custom_terrain())
     scene.add_robot(robot)
+    scene.add_interactive_object(
+        Ball(
+            radius=0.1,
+            mass=0.0,
+            is_static=False,
+            pose=Pose(position=Vector3([0.0, 0.0, 0.25])),
+        )
+    )
 
     # Simulate the scene.
     simulator = LocalSimulator()

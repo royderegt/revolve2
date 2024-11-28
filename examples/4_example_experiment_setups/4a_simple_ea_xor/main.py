@@ -11,7 +11,7 @@ from individual import Individual
 from numpy.typing import NDArray
 
 from revolve2.experimentation.evolution.abstract_elements import Reproducer, Selector
-from revolve2.experimentation.logging import setup_logging
+from revolve2.experimentation.experiment_logging import setup_logging
 from revolve2.experimentation.optimization.ea import population_management, selection
 from revolve2.experimentation.rng import make_rng_time_seed
 

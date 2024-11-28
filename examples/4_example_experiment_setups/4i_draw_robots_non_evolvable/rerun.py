@@ -10,10 +10,6 @@ from sqlalchemy.orm import Session
 
 from revolve2.experimentation.database import OpenMethod, open_database_sqlite
 from revolve2.experimentation.experiment_logging import setup_logging
-from revolve2.modular_robot.body.base import ActiveHinge
-from revolve2.modular_robot.brain.cpg import (
-    active_hinges_to_cpg_network_structure_neighbor,
-)
 
 
 def main() -> None:
@@ -26,40 +22,24 @@ def main() -> None:
     )
 
     with Session(dbengine) as ses:
-        row = ses.execute(
+        rows = ses.execute(
             select(Genotype, Individual.fitness)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
             .order_by(Individual.fitness.desc())
-            .limit(1)
-        ).one()
-        assert row is not None
+            .limit(100)
+        ).all()
+        assert rows is not None
 
-        genotype = row[0]
-        fitness = row[1]
+        genotypes = [row[0] for row in rows]
+        #fitnesses = [row[1] for row in rows]
 
-    parameters = genotype.parameters
-
-    logging.info(f"Best fitness: {fitness}")
-    logging.info(f"Best parameters: {parameters}")
-
-    # Prepare the body and brain structure
-    active_hinges = config.BODY.find_modules_of_type(ActiveHinge)
-    (
-        cpg_network_structure,
-        output_mapping,
-    ) = active_hinges_to_cpg_network_structure_neighbor(active_hinges)
+    #logging.info(f"Best fitness: {fitnesses[1]}")
 
     # Create the evaluator.
-    evaluator = Evaluator(
-        headless=False,
-        num_simulators=1,
-        cpg_network_structure=cpg_network_structure,
-        body=config.BODY,
-        output_mapping=output_mapping,
-    )
+    evaluator = Evaluator(headless=False, num_simulators=1)
 
     # Show the robot.
-    evaluator.evaluate([parameters])
+    evaluator.evaluate(genotypes)
 
 
 if __name__ == "__main__":

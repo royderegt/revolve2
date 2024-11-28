@@ -6,7 +6,7 @@ import config
 import numpy as np
 
 import revolve2.experimentation.rng
-from revolve2.experimentation.logging import setup_logging
+from revolve2.experimentation.experiment_logging import setup_logging
 
 
 def run_experiment(num_samples: int, probability: float) -> None:

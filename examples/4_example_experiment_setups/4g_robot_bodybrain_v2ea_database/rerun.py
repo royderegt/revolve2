@@ -22,24 +22,22 @@ def main() -> None:
     )
 
     with Session(dbengine) as ses:
-        row = ses.execute(
+        rows = ses.execute(
             select(Genotype, Individual.fitness)
             .join_from(Genotype, Individual, Genotype.id == Individual.genotype_id)
             .order_by(Individual.fitness.desc())
             .limit(1)
-        ).one()
-        assert row is not None
-
-        genotype = row[0]
-        fitness = row[1]
-
-    logging.info(f"Best fitness: {fitness}")
+        ).all()
+        assert rows is not None
 
     # Create the evaluator.
     evaluator = Evaluator(headless=False, num_simulators=1)
 
     # Show the robot.
-    evaluator.evaluate([genotype])
+    for genotype, fitness in rows:
+        logging.info(f"Fitness: {fitness}")
+        evaluator.evaluate([genotype])
+
 
 
 if __name__ == "__main__":

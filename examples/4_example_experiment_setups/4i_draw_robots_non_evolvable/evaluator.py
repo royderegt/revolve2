@@ -11,7 +11,7 @@ from revolve2.modular_robot_simulation import (
 from revolve2.simulators.mujoco_simulator import LocalSimulator
 from revolve2.standards import fitness_functions, terrains
 from revolve2.standards.simulation_parameters import make_standard_batch_parameters
-from revolve2.modular_robot.body.v2 import BodyV2, BrickV2Large
+from revolve2.simulation.simulator import RecordSettings
 
 
 class Evaluator(Eval):
@@ -57,16 +57,18 @@ class Evaluator(Eval):
             scene.add_robot(robot)
             scenes.append(scene)
 
+        params = make_standard_batch_parameters()
+        params.simulation_time = 2
         # Simulate all scenes.
         scene_states = simulate_scenes(
             simulator=self._simulator,
-            batch_parameters=make_standard_batch_parameters(),
+            batch_parameters=params,
             scenes=scenes,
         )
 
         # Calculate the xy displacements.
         xy_displacements = [
-            fitness_functions.z_value_xy_displacement_z_displacement(
+            fitness_functions.xy_displacement(
                 states[0].get_modular_robot_simulation_state(robot),
                 states[-1].get_modular_robot_simulation_state(robot),
             )
