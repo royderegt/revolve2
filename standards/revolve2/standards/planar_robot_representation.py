@@ -11,7 +11,7 @@ from pyrr import Vector3
 
 from revolve2.modular_robot import ModularRobot
 from revolve2.modular_robot.body import Module
-from revolve2.modular_robot.body.base import ActiveHinge, Body, Brick, Core
+from revolve2.modular_robot.body.base import AttachmentFace, ActiveHinge, Body, Brick, Core
 
 
 def __mk_path() -> str:
@@ -39,12 +39,14 @@ def draw_robots(
     if not path:
         path = __mk_path()
 
+    i = 0
     for robot in robots:
-        draw_robot(robot, scale, path)
+        draw_robot(robot, scale, path, i)
+        i += 1
 
 
 def draw_robot(
-    robot: ModularRobot | Body, scale: int = 100, path: str | None = None
+    robot: ModularRobot | Body, scale: int = 100, path: str | None = None, i : int = 0
 ) -> None:
     """
     Draw a 2D representation for a modular robots body.
@@ -56,6 +58,7 @@ def draw_robot(
     :param robot: Supply the robot as a ModularRobot object, or the body directly as a Body object.
     :param scale: Allows to set the size of the drawing.
     :param path: The path to save images to.
+    :param i: index of the robot in the list of robots.
     """
     if not path:
         path = __mk_path()
@@ -77,7 +80,7 @@ def draw_robot(
         orientation=_make_rot_mat(0),
         context=context,
     )
-    _save_png(image, path)
+    _save_png(image, path, i)
 
 
 def _draw_module(
@@ -111,6 +114,8 @@ def _draw_module(
                 context.set_source_rgb(1.0, 0.4, 0.4)  # Flesh Color
         case Brick():
             context.set_source_rgb(0, 0, 1)  # Blue
+        case AttachmentFace():
+            context.set_source_rgb(0, 1, 0)  # Green
         case _:
             raise Exception(
                 f"Module of type {type(module)} has no defined structure for drawing."
@@ -182,11 +187,11 @@ def _make_rot_mat(theta: float) -> NDArray[np.int_]:
     return rotation
 
 
-def _save_png(image: cairo.ImageSurface, path: str) -> None:
+def _save_png(image: cairo.ImageSurface, path: str, i: int) -> None:
     """
     Save the image representation of a robot as png.
 
     :param image: The image.
     :param path: The path to save the image to.
     """
-    image.write_to_png(f"{path}/robot_2d_{str(hash(image))}.png")
+    image.write_to_png(f"{path}/robot_2d_{i}_{str(hash(image))}.png")

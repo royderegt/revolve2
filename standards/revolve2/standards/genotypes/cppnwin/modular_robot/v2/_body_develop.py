@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 from pyrr import Quaternion, Vector3
 
 from revolve2.modular_robot.body import AttachmentPoint, Module
-from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2Large
+from revolve2.modular_robot.body.v2 import ActiveHingeV2, BodyV2, BrickV2Large, BrickV2
 
 @dataclass
 class __Module:
@@ -142,9 +142,14 @@ def __add_child(
     if child_type is BrickV2Large:
         bone_length = bone_length / 1000
         child = BrickV2Large(angle, bone_length)
+        # TODO: if brick takes more than one cell, also check the other cells similar to this
+        """if grid[tuple(position)] > 0:
+            return None
+        """
     else:
         child = child_type(angle)
     grid[tuple(position)] += 1
+    # TODO: check if the current block overlaps with other grid cells. If so, also set that grid cell to 1
     up = __rotate(module.up, forward, Quaternion.from_eulers([angle, 0, 0]))
     module.module_reference.set_child(child, attachment_index)
 
