@@ -39,7 +39,7 @@ class ModularRobotEvolution(Evolution):
         self._learner = learner
         self._reproducer = reproducer
 
-    def step(self, population: TPopulation, **kwargs: Any) -> TPopulation:
+    def step(self, population: TPopulation, generation_index: int = 0, **kwargs: Any) -> TPopulation:
         """
         Step the current evolution by one iteration.
 
@@ -61,7 +61,7 @@ class ModularRobotEvolution(Evolution):
         """
         parents, parent_kwargs = self._parent_selection.select(population, **kwargs)
         children = self._reproducer.reproduce(parents, **parent_kwargs)
-        child_task_performance = self._evaluator.evaluate(children)
+        child_task_performance = self._evaluator.evaluate(children, generation_index=generation_index)
         survivors, *_ = self._survivor_selection.select(
             population,
             **kwargs,

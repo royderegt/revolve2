@@ -39,6 +39,7 @@ class Evaluator(Eval):
     def evaluate(
         self,
         population: list[Genotype],
+        generation_index: int = 0,
     ) -> list[float]:
         """
         Evaluate multiple robots.
@@ -46,6 +47,7 @@ class Evaluator(Eval):
         Fitness is the distance traveled on the xy plane.
 
         :param population: The robots to simulate.
+        :param generation_index: The index of the generation.
         :returns: Fitnesses of the robots.
         """
         robots = [genotype.develop() for genotype in population]
@@ -66,9 +68,14 @@ class Evaluator(Eval):
 
         # Calculate the xy displacements.
         xy_displacements = [
-            fitness_functions.z_value_xy_displacement_z_displacement(
+            fitness_functions.combined_fitness(
                 states[0].get_modular_robot_simulation_state(robot),
                 states[-1].get_modular_robot_simulation_state(robot),
+                0.5,
+                1,
+                1,
+                generation_index,
+                5
             )
             for robot, states in zip(robots, scene_states)
         ]

@@ -275,7 +275,7 @@ def run_experiment(dbengine: Engine) -> None:
         )
 
         # Here we iterate the evolutionary process using the step.
-        population = modular_robot_evolution.step(population)
+        population = modular_robot_evolution.step(population, generation_index=generation.generation_index)
 
         # Make it all into a generation and save it to the database.
         generation = Generation(
