@@ -17,6 +17,7 @@ class BrickV2(Brick):
             rotation=rotation,
             bounding_box=Vector3([0.06288625, 0.06288625, 0.0603]),
             mass=0.06043,
-            child_offset=0.06288625 / 2.0,
+            front_offset=0.06288625 / 2.0,
+            side_offset=0.06288625 / 2.0,
             sensors=[],
         )

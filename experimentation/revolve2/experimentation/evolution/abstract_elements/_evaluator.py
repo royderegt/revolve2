@@ -10,7 +10,7 @@ class Evaluator(ABC):
     """An Evaluator object that enables evaluation of individuals in an evolutionary process."""
 
     @abstractmethod
-    def evaluate(self, population: TPopulation) -> list[float]:
+    def evaluate(self, population: TPopulation, generation_index: int) -> list[float]:
         """
         Evaluate individuals from a population.
 
