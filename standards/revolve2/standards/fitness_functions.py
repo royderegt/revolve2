@@ -3,6 +3,11 @@
 import math
 
 from revolve2.modular_robot_simulation import ModularRobotSimulationState
+from revolve2.modular_robot import ModularRobot
+
+
+from revolve2.modular_robot.body import Module
+from revolve2.modular_robot.body.base import ActiveHinge, Core
 
 
 def xy_displacement(
@@ -131,6 +136,8 @@ def weighted_target_z_and_xy_displacement(
     z_distance = abs(end_position.z - target_z)
     z_fitness = 1 / (1 + z_distance)
 
+    if z_distance > 0.1: z_fitness = 0
+
     begin_position = begin_state.get_pose().position
     xy_displacement = math.sqrt(
         (begin_position.x - end_position.x) ** 2
@@ -141,8 +148,8 @@ def weighted_target_z_and_xy_displacement(
     fitness = (z_weight * z_fitness) + (xy_weight * xy_fitness)
     return fitness
 
-def weighted_target_z_and_xy_displacement_and_z_penalty(
-    begin_state: ModularRobotSimulationState, end_state: ModularRobotSimulationState, target_z: float, z_weight: float, xy_weight: float
+def combined_fitness(
+    robot: ModularRobot, begin_state: ModularRobotSimulationState, end_state: ModularRobotSimulationState, target_z: float, z_weight: float, xy_weight: float
 ) -> float:
     """
     Calculate the fitness based on how close the final Z position is to the target Z value and the XY displacement.
@@ -154,15 +161,31 @@ def weighted_target_z_and_xy_displacement_and_z_penalty(
     :param xy_weight: The weight for the XY displacement fitness.
     :returns: The calculated fitness.
     """
+    active_hinges = len(robot.body.find_modules_of_type(ActiveHinge))
+    modules = len(robot.body.find_modules_of_type(Module, exclude=[Core]))
+
+    # Jan 21: added proportional penalty
+    if modules <= 4:
+        proportion = 0.5
+    else:
+        proportion = active_hinges / (modules - 4)
+
+    if proportion < 0.25 or proportion > 0.70:
+        proportion_penalty = 0.5
+    else:
+        proportion_penalty = 1
+
     begin_position = begin_state.get_pose().position
     end_position = end_state.get_pose().position
-    if (begin_state.z - end_position.z) > 0:
-        penalty = (begin_position.z - end_position.z) * 2
-    else:
-        penalty = 0
-    return weighted_target_z_and_xy_displacement(begin_state, end_state, target_z, z_weight, xy_weight) - penalty
 
-def combined_fitness(
+    if (begin_position.z - end_position.z) > 0:
+        falling_penalty = 0.5
+    else:
+        falling_penalty = 1
+    return (proportion_penalty * falling_penalty *
+            weighted_target_z_and_xy_displacement(begin_state, end_state, target_z, z_weight, xy_weight))
+
+def split_fitness(
     begin_state: ModularRobotSimulationState, end_state: ModularRobotSimulationState, target_z: float, z_weight: float,
         xy_weight: float, generation_number: int, generation_threshold: int
 ) -> float:

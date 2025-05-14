@@ -96,7 +96,7 @@ def __evaluate_cppn(
     outputs = body_net.Output()
 
     """We select the module type for the current position using the first output of the CPPN network."""
-    types = [None, BrickV2Large, ActiveHingeV2]
+    types = [None, BrickV2, ActiveHingeV2] # TODO: Edit this to BrickV2
     target_idx = max(0, int(outputs[0] * len(types) - 1e-6))
     module_type = types[target_idx]
 
@@ -107,9 +107,9 @@ def __evaluate_cppn(
     """
     angle = max(0, int(outputs[1] * 4 - 1e-6)) * (np.pi / 2.0)
 
-    bone_length = max(0, 75 + int(outputs[2] * 150 - 1e-6))
+    # bone_length = max(0, 75 + int(outputs[2] * 150 - 1e-6))
 
-    return module_type, angle, bone_length
+    return module_type, angle #, bone_length
 
 
 def __add_child(
@@ -131,7 +131,8 @@ def __add_child(
 
     """Now we anjust the position for the potential new module to fit the attachment point of the parent, additionally we query the CPPN for child type and angle of the child."""
     new_pos = np.array(np.round(position + attachment_point.offset), dtype=np.int64)
-    child_type, angle, bone_length = __evaluate_cppn(body_net, new_pos, chain_length)
+    child_type, angle = __evaluate_cppn(body_net, new_pos, chain_length)
+    # TODO remove bone_length
 
     """Here we check whether the CPPN evaluated to place a module and if the module can be set on the parent."""
     can_set = module.module_reference.can_set_child(attachment_index)
